@@ -11,6 +11,14 @@ from datetime import datetime, timezone, timedelta
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.lib.colors import HexColor
+from reportlab.pdfgen import canvas as pdfcanvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from io import BytesIO
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -438,6 +446,168 @@ async def admin_lead_chat(lead_id: str, _: bool = Depends(require_admin)):
     if sid:
         draft = await db.chat_drafts.find_one({"session_id": sid}, {"_id": 0})
     return {"lead": lead, "transcript": transcript, "draft": draft}
+
+
+# Estimated pricing per service (AED) for quick proposal lines
+SERVICE_BASE_PRICES = {
+    "Website Design": (3500, 10000),
+    "Website Development": (5000, 18000),
+    "Landing Pages": (1500, 5000),
+    "SEO": (3000, 9000),
+    "Google Ads": (4000, 12000),
+    "Meta Ads": (4000, 12000),
+    "AI Chatbots": (2000, 10000),
+    "AI Customer Support": (3500, 14000),
+    "AI Automation": (4500, 18000),
+    "CRM Integration": (3500, 12000),
+    "API Integration": (3000, 9000),
+    "Business Manager Setup": (1000, 3000),
+    "Social Media Management": (3500, 12000),
+    "Influencer Marketing": (5000, 25000),
+    "Brand Identity": (5000, 18000),
+    "Poster Design": (800, 2500),
+    "Video Editing": (1500, 6000),
+    "AI Video Creation": (2000, 8000),
+    "VIP Numbers": (1000, 25000),
+}
+
+
+def build_quote_pdf(lead: dict, transcript: list) -> bytes:
+    GOLD = HexColor("#D4AF37")
+    WARM = HexColor("#F8F6F0")
+    DARK = HexColor("#0a0a0a")
+    SUB  = HexColor("#7a7a7a")
+
+    buf = BytesIO()
+    c = pdfcanvas.Canvas(buf, pagesize=A4)
+    W, H = A4
+
+    # Background
+    c.setFillColor(HexColor("#030303"))
+    c.rect(0, 0, W, H, stroke=0, fill=1)
+    # Gold accent bar
+    c.setFillColor(GOLD)
+    c.rect(0, H - 6*mm, W, 6*mm, stroke=0, fill=1)
+
+    # Brand
+    c.setFillColor(GOLD)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(20*mm, H - 18*mm, "APEX MEDIA · DUBAI, UAE")
+    c.setFillColor(WARM)
+    c.setFont("Helvetica-Bold", 28)
+    c.drawString(20*mm, H - 32*mm, "Proposal")
+    c.setFillColor(SUB)
+    c.setFont("Helvetica", 10)
+    c.drawString(20*mm, H - 39*mm, "AI Powered Digital Growth Partner")
+
+    # Right: quote meta
+    c.setFillColor(SUB); c.setFont("Helvetica", 8)
+    c.drawRightString(W - 20*mm, H - 18*mm, "QUOTE")
+    c.setFillColor(WARM); c.setFont("Helvetica-Bold", 10)
+    c.drawRightString(W - 20*mm, H - 23*mm, f"#{(lead.get('id') or '')[:8].upper()}")
+    c.setFillColor(SUB); c.setFont("Helvetica", 9)
+    c.drawRightString(W - 20*mm, H - 30*mm, datetime.now(timezone.utc).strftime("%d %b %Y"))
+
+    # Client block
+    y = H - 60*mm
+    c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 9)
+    c.drawString(20*mm, y, "PREPARED FOR")
+    c.setFillColor(WARM); c.setFont("Helvetica-Bold", 16)
+    y -= 7*mm
+    c.drawString(20*mm, y, (lead.get("name") or "Valued Client")[:60])
+    c.setFillColor(SUB); c.setFont("Helvetica", 10)
+    y -= 6*mm
+    for line in [lead.get("business"), lead.get("email"), lead.get("phone"), lead.get("country")]:
+        if line:
+            c.drawString(20*mm, y, str(line)[:80]); y -= 5*mm
+
+    # Engagement summary
+    y -= 8*mm
+    c.setStrokeColor(GOLD); c.setLineWidth(0.4); c.line(20*mm, y, W - 20*mm, y); y -= 8*mm
+    c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 9)
+    c.drawString(20*mm, y, "ENGAGEMENT SUMMARY"); y -= 6*mm
+    c.setFillColor(WARM); c.setFont("Helvetica", 10)
+    summary = lead.get("message") or "Strategic digital growth engagement scoped from initial discovery with Apex AI."
+    # naive wrap
+    line, words = "", summary.split()
+    for w in words:
+        if len(line) + len(w) + 1 > 95:
+            c.drawString(20*mm, y, line); y -= 5*mm; line = w
+        else:
+            line = (line + " " + w).strip()
+    if line: c.drawString(20*mm, y, line); y -= 5*mm
+
+    # Service & estimate
+    y -= 6*mm
+    c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 9)
+    c.drawString(20*mm, y, "PROPOSED SCOPE"); y -= 7*mm
+    c.setFillColor(WARM); c.setFont("Helvetica-Bold", 12)
+    svc = lead.get("service") or "Custom Digital Growth Engagement"
+    c.drawString(20*mm, y, svc); y -= 6*mm
+
+    lo, hi = SERVICE_BASE_PRICES.get(svc, (5000, 25000))
+    budget_hint = lead.get("budget") or ""
+    c.setFillColor(SUB); c.setFont("Helvetica", 9)
+    c.drawString(20*mm, y, f"Indicative range based on scope and complexity"); y -= 6*mm
+
+    # Pricing card
+    c.setFillColor(HexColor("#0c0c0c"))
+    c.roundRect(20*mm, y - 30*mm, W - 40*mm, 30*mm, 4*mm, stroke=0, fill=1)
+    c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 9)
+    c.drawString(25*mm, y - 8*mm, "ESTIMATE")
+    c.setFillColor(WARM); c.setFont("Helvetica-Bold", 22)
+    c.drawString(25*mm, y - 18*mm, f"AED {lo:,} — {hi:,}")
+    c.setFillColor(SUB); c.setFont("Helvetica", 9)
+    c.drawString(25*mm, y - 25*mm, (f"Client budget noted: {budget_hint}" if budget_hint else "Final scope confirmed during discovery."))
+
+    y -= 40*mm
+
+    # Inclusions
+    c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 9)
+    c.drawString(20*mm, y, "INCLUDED"); y -= 6*mm
+    incl = [
+        "Discovery workshop & strategy roadmap",
+        "Full creative & technical execution by Apex Media",
+        "Performance dashboard & weekly reporting",
+        "AI automation hand-off and training",
+        "Post-launch optimization for the first 30 days",
+    ]
+    c.setFillColor(WARM); c.setFont("Helvetica", 10)
+    for i in incl:
+        c.drawString(22*mm, y, "•")
+        c.drawString(26*mm, y, i); y -= 5*mm
+
+    # Footer
+    c.setStrokeColor(GOLD); c.setLineWidth(0.4); c.line(20*mm, 28*mm, W - 20*mm, 28*mm)
+    c.setFillColor(SUB); c.setFont("Helvetica", 8)
+    c.drawString(20*mm, 22*mm, "Apex Media · Dubai, UAE  ·  +971 58 616 9311  ·  mediaapex15@gmail.com")
+    c.drawString(20*mm, 17*mm, "This quote is valid for 30 days. Final pricing confirmed after discovery.")
+    c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 8)
+    c.drawRightString(W - 20*mm, 22*mm, "WWW.APEXMEDIA.AE")
+
+    c.showPage(); c.save()
+    return buf.getvalue()
+
+
+@api_router.get("/admin/leads/{lead_id}/quote.pdf")
+async def admin_lead_quote_pdf(lead_id: str, token: Optional[str] = None):
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    transcript = []
+    sid = lead.get("chat_session_id")
+    if sid:
+        transcript = await db.chat_messages.find({"session_id": sid}, {"_id": 0}).sort("created_at", 1).to_list(500)
+    pdf_bytes = build_quote_pdf(lead, transcript)
+    safe_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", (lead.get("name") or "client"))
+    from fastapi.responses import Response
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="apex-quote-{safe_name}-{lead_id[:8]}.pdf"'},
+    )
 
 
 app.include_router(api_router)

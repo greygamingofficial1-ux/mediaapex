@@ -106,7 +106,7 @@ function buildImageSet(url) {
   // Works for Unsplash (?auto=format) and Pexels (?auto=compress) — others fall back to original.
   const isUnsplash = url.includes("images.unsplash.com");
   const isPexels = url.includes("images.pexels.com");
-  const widths = [480, 768, 1024, 1400];
+  const widths = [400, 720, 1024];
   const fmt = (w, format) => {
     if (isUnsplash) return url.replace(/([?&])w=\d+/, "").replace("auto=format", `fm=${format}&w=${w}&q=70&auto=format`);
     if (isPexels) return url.replace(/w=\d+/, `w=${w}`) + `&fm=${format}`;

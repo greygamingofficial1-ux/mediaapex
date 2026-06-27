@@ -212,6 +212,10 @@ export default function AdminLeads() {
                       data-testid={`expand-${l.id}`}
                       className="text-[var(--apex-gold)] text-xs hover:underline mr-3"
                     >{expanded === l.id ? "Hide" : "Transcript"}</button>
+                    <a href={`${API}/admin/leads/${l.id}/quote.pdf?token=${encodeURIComponent(token)}`}
+                       target="_blank" rel="noreferrer"
+                       data-testid={`quote-pdf-${l.id}`}
+                       className="text-[var(--apex-gold)] text-xs hover:underline mr-3">Quote PDF</a>
                     <a href={`https://wa.me/${(l.phone || "971586169311").replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="text-[var(--apex-gold)] text-xs hover:underline">WhatsApp</a>
                   </td>
                 </tr>
