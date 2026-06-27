@@ -5,6 +5,7 @@ import "@/App.css";
 import LuxuryCursor from "@/components/LuxuryCursor";
 import CinematicLoader from "@/components/CinematicLoader";
 import SmoothScroll from "@/components/SmoothScroll";
+import SoundController from "@/components/SoundController";
 import Navbar from "@/components/Navbar";
 import Hero from "@/sections/Hero";
 import Services from "@/sections/Services";
@@ -37,6 +38,7 @@ function App() {
   return (
     <div className="App grain">
       <LuxuryCursor />
+      <SoundController />
       <CinematicLoader onComplete={() => setLoaded(true)} />
       {loaded && (
         <SmoothScroll>

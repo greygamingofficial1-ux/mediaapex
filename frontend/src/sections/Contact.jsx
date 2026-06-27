@@ -53,6 +53,7 @@ export default function Contact() {
     try {
       await axios.post(`${API}/leads`, { ...form, source: "contact_form" });
       setStatus("success");
+      window.dispatchEvent(new CustomEvent("apex:success"));
       setForm({ name: "", business: "", email: "", phone: "", country: "UAE", service: "", budget: "", message: "" });
     } catch (e2) {
       setStatus("error");
@@ -191,13 +192,43 @@ export default function Contact() {
 function BookingBlock() {
   const [b, setB] = useState({ name: "", email: "", phone: "", business: "", service: "", date: "", time: "10:00", notes: "" });
   const [st, setSt] = useState("idle"); const [er, setEr] = useState("");
+  const [taken, setTaken] = React.useState([]);
   const upd = (e) => setB(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  // Fetch already-booked slots whenever the date changes.
+  React.useEffect(() => {
+    if (!b.date) { setTaken([]); return; }
+    let cancelled = false;
+    axios.get(`${API}/bookings/availability`, { params: { date: b.date } })
+      .then(r => { if (!cancelled) setTaken(r.data?.taken || []); })
+      .catch(() => { if (!cancelled) setTaken([]); });
+    return () => { cancelled = true; };
+  }, [b.date]);
+
+  // If current time becomes taken, fall back to the first free slot.
+  React.useEffect(() => {
+    if (taken.includes(b.time)) {
+      const all = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00"];
+      const free = all.find(t => !taken.includes(t));
+      if (free) setB(p => ({ ...p, time: free }));
+    }
+  }, [taken, b.time]);
+
   const submit = async (e) => {
     e.preventDefault(); setSt("sending"); setEr("");
     try {
       await axios.post(`${API}/bookings`, b);
       setSt("success");
-    } catch (e2) { setSt("error"); setEr(e2?.response?.data?.detail?.toString() || "Try WhatsApp instead."); }
+      window.dispatchEvent(new CustomEvent("apex:success"));
+      // refresh availability so the just-booked slot disables instantly
+      setTaken(prev => Array.from(new Set([...prev, b.time])));
+    } catch (e2) {
+      setSt("error");
+      const code = e2?.response?.status;
+      setEr(code === 409
+        ? "That slot was just taken. Please pick another time."
+        : (e2?.response?.data?.detail?.toString() || "Try WhatsApp instead."));
+    }
   };
   const waLink = () => {
     const msg = `Hi Apex Media, I'd like to book a consultation.%0AName: ${b.name}%0ABusiness: ${b.business}%0AService: ${b.service}%0APreferred: ${b.date} ${b.time}%0ANotes: ${b.notes}`;
@@ -227,7 +258,16 @@ function BookingBlock() {
         </select>
         <input name="date" type="date" required min={today} value={b.date} onChange={upd} className={inputCls} data-testid="booking-date"/>
         <select name="time" value={b.time} onChange={upd} className={inputCls} data-testid="booking-time">
-          {times.map(t => <option key={t} value={t} className="bg-black">{t}</option>)}
+          {times.map(t => (
+            <option
+              key={t}
+              value={t}
+              disabled={taken.includes(t)}
+              className="bg-black"
+            >
+              {t}{taken.includes(t) ? " — Booked" : ""}
+            </option>
+          ))}
         </select>
         <input name="notes" placeholder="Notes (optional)" value={b.notes} onChange={upd} className={`${inputCls} md:col-span-2`} data-testid="booking-notes"/>
         <div className="md:col-span-3 flex flex-wrap items-center justify-between gap-5 mt-4">

@@ -114,8 +114,14 @@ RULES: Never claim guaranteed sales/rankings. Use realistic language. Keep respo
 
 
 # ===== Admin auth =====
-def require_admin(x_admin_token: Optional[str] = Header(None)):
-    if not x_admin_token or x_admin_token != ADMIN_TOKEN:
+def require_admin(
+    x_admin_token: Optional[str] = Header(None),
+    token: Optional[str] = None,
+):
+    """Accept either the X-Admin-Token header (JSON APIs) or a ?token= query
+    parameter (file downloads — CSV, PDF). Both routes share the same secret."""
+    provided = x_admin_token or token
+    if not provided or provided != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return True
 
@@ -199,6 +205,14 @@ async def create_lead(payload: LeadCreate, request: Request):
 @api_router.post("/bookings", response_model=Booking)
 async def create_booking(payload: BookingCreate, request: Request):
     rate_limit(request, "bookings", max_calls=5, window_sec=60)
+    # Prevent double-booking the same date+time slot (cancelled slots are reusable).
+    clash = await db.bookings.find_one({
+        "date": payload.date,
+        "time": payload.time,
+        "status": {"$ne": "cancelled"},
+    })
+    if clash:
+        raise HTTPException(status_code=409, detail="This slot is already booked. Please choose another time.")
     booking = Booking(**payload.model_dump())
     await db.bookings.insert_one(booking.model_dump())
     # also drop a lead record so admin sees it in one place
@@ -213,6 +227,21 @@ async def create_booking(payload: BookingCreate, request: Request):
     except Exception:
         pass
     return booking
+
+
+@api_router.get("/bookings/availability")
+async def booking_availability(date: str, request: Request):
+    """Return the list of HH:MM slots already booked on a given ISO date.
+    Public read-only endpoint so the booking form can disable taken slots."""
+    rate_limit(request, "availability", max_calls=60, window_sec=60)
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or ""):
+        raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
+    docs = await db.bookings.find(
+        {"date": date, "status": {"$ne": "cancelled"}},
+        {"_id": 0, "time": 1},
+    ).to_list(200)
+    taken = sorted({d.get("time") for d in docs if d.get("time")})
+    return {"date": date, "taken": taken}
 
 
 @api_router.post("/chat/stream")
@@ -365,10 +394,8 @@ async def admin_update_lead(lead_id: str, payload: LeadStatusUpdate, _: bool = D
 
 
 @api_router.get("/admin/leads.csv")
-async def admin_leads_csv(token: Optional[str] = None):
-    # CSV endpoint uses query param so a regular <a download> works
-    if token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def admin_leads_csv(_: bool = Depends(require_admin)):
+    # CSV endpoint accepts query token (so plain <a download> works) or header.
     docs = await db.leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -590,9 +617,7 @@ def build_quote_pdf(lead: dict, transcript: list) -> bytes:
 
 
 @api_router.get("/admin/leads/{lead_id}/quote.pdf")
-async def admin_lead_quote_pdf(lead_id: str, token: Optional[str] = None):
-    if token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def admin_lead_quote_pdf(lead_id: str, _: bool = Depends(require_admin)):
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")

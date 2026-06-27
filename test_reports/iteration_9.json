@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 9 — validated the 3 new features (Sound interaction hooks, Booking availability backend, Unified admin auth) plus regression. Backend: 18/18 pytest pass (test_iter9.py). Frontend Playwright on production URL: ApexSound present with all 6 methods (enable/disable/toggle/isEnabled/play/_unlock), types=['hover','click','success','navigate'], initiallyEnabled=false (no autoplay), play() before user gesture does NOT throw, enable() flips localStorage 'apex_sound' to 'on', disable() flips to 'off' (persistence verified). SoundController custom-event wiring (apex:success, hashchange, popstate) and pointer handlers attach without errors. Booking UI: GET /api/bookings/availability fetched on date change, taken slot rendered as '<HH:MM> — Booked' with disabled=true (verified: 15:00 disabled, 8 other slots enabled). Submitting an available slot (2031-05-21 16:00) shows booking-success block. Unified admin auth: GET /api/admin/leads.csv, /api/admin/leads/{id}/quote.pdf, AND /api/admin/leads (JSON) ALL return 200 with either X-Admin-Token header OR ?token= query param; 401 returned without token or with wrong token. Regression: /api/, POST /api/leads, /api/admin/analytics, /api/admin/login, /api/chat/stream all pass. Navigation Home→Admin (login with apex-admin-2026)→Home produced 0 console errors. UI unchanged at hero/sections/portfolio (verified in iter8; visual parity confirmed by loader+layout intact).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter9.py",
+    "/app/backend/tests/test_regression.py",
+    "/app/test_reports/pytest/iter9_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py require_admin (lines 117-126) cleanly unifies header+query token via a single Depends, addressing iter8's review comment about split conventions. Good fix.",
+    "Contact.jsx BookingBlock fetch effect (lines 199-206) correctly cancels stale requests via the `cancelled` flag — race-safe on rapid date changes.",
+    "Booking time fallback effect (lines 209-215) automatically moves the user off a now-taken slot to the first free one — nice UX touch; consider also clearing b.time if ALL slots are taken (currently would leave a disabled selection).",
+    "sound.js play() correctly guards with `if (!enabled || !unlocked) return;` so it is safe to invoke before user gesture. localStorage.getItem at module init reads persisted state — good.",
+    "SoundController.jsx uses { once: true } for firstGesture but does NOT add it to the cleanup removeEventListener list. Minor leak risk on rapid mount/unmount; not a real issue in practice since it's a single-fire."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter9.py (new — 18 tests, 100% pass)"
+  ],
+  "success_rate": { "backend": "100% (18/18)", "frontend": "100%" },
+  "test_credentials": "Admin token: apex-admin-2026 (works on BOTH X-Admin-Token header AND ?token= query for /api/admin/leads, /api/admin/leads.csv, /api/admin/leads/{id}/quote.pdf, /api/admin/analytics).",
+  "seed_data_creation": "Created TEST_-prefixed records via tests: bookings on 2030-11-15 14:30, 2030-11-15 15:00, 2031-05-21 16:00; ~3 TEST_ leads (test_iter9_*@apex.media). All safe to leave or delete.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Apex Media iter9 confirms 3 new features fully working: (1) window.ApexSound singleton + opt-in via enable()/localStorage; (2) /api/bookings/availability + 409 on conflict + UI option disabled with '— Booked' suffix; (3) require_admin accepts header OR ?token= uniformly across ALL admin JSON & file endpoints. Canonical regression suites: /app/backend/tests/test_regression.py (iter8) + /app/backend/tests/test_iter9.py (iter9 new features). Booking time options are fixed: 09:00,10:00,11:00,12:00,14:00,15:00,16:00,17:00,18:00 — if you seed slots outside this set (e.g. 14:30) they won't appear in the UI dropdown.",
+  "rca of the issue": "No issues found this iteration."
+}
