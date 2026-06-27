@@ -181,7 +181,62 @@ export default function Contact() {
             )}
           </motion.form>
         </div>
+
+        <BookingBlock />
       </div>
     </section>
+  );
+}
+
+function BookingBlock() {
+  const [b, setB] = useState({ name: "", email: "", phone: "", business: "", service: "", date: "", time: "10:00", notes: "" });
+  const [st, setSt] = useState("idle"); const [er, setEr] = useState("");
+  const upd = (e) => setB(p => ({ ...p, [e.target.name]: e.target.value }));
+  const submit = async (e) => {
+    e.preventDefault(); setSt("sending"); setEr("");
+    try {
+      await axios.post(`${API}/bookings`, b);
+      setSt("success");
+    } catch (e2) { setSt("error"); setEr(e2?.response?.data?.detail?.toString() || "Try WhatsApp instead."); }
+  };
+  const waLink = () => {
+    const msg = `Hi Apex Media, I'd like to book a consultation.%0AName: ${b.name}%0ABusiness: ${b.business}%0AService: ${b.service}%0APreferred: ${b.date} ${b.time}%0ANotes: ${b.notes}`;
+    return `https://wa.me/971586169311?text=${msg}`;
+  };
+  const today = new Date().toISOString().slice(0, 10);
+  const times = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00"];
+  const inputCls = "w-full bg-transparent outline-none text-[var(--apex-warm)] font-body pt-1 pb-2 border-b border-white/15 focus:border-[var(--apex-gold)] transition-colors";
+  return (
+    <div id="booking" className="mt-20 glass-strong rounded-3xl p-8 md:p-12" data-testid="booking-block">
+      <div className="flex items-end justify-between flex-wrap gap-6 mb-10">
+        <div>
+          <span className="eyebrow">Book a consultation</span>
+          <h3 className="mt-5 font-display text-3xl md:text-5xl text-[var(--apex-warm)] leading-tight">Reserve your <span className="gold-text-gradient italic">strategy session</span>.</h3>
+          <p className="mt-3 text-white/55 max-w-xl">Free 30-minute call. We'll map your growth bottlenecks and propose a tailored Apex roadmap.</p>
+        </div>
+        <a href={waLink()} target="_blank" rel="noreferrer" data-magnetic data-testid="booking-whatsapp" className="magnetic-btn"><span className="btn-fill"/>Book via WhatsApp</a>
+      </div>
+      <form onSubmit={submit} className="grid md:grid-cols-3 gap-6">
+        <input name="name" required placeholder="Full Name *" value={b.name} onChange={upd} className={inputCls} data-testid="booking-name"/>
+        <input name="email" type="email" required placeholder="Email *" value={b.email} onChange={upd} className={inputCls} data-testid="booking-email"/>
+        <input name="phone" placeholder="Phone (UAE)" value={b.phone} onChange={upd} className={inputCls} data-testid="booking-phone"/>
+        <input name="business" placeholder="Business" value={b.business} onChange={upd} className={inputCls} data-testid="booking-business"/>
+        <select name="service" value={b.service} onChange={upd} className={inputCls} data-testid="booking-service">
+          <option value="" className="bg-black">Service Interest</option>
+          {services.map(s => <option key={s} value={s} className="bg-black">{s}</option>)}
+        </select>
+        <input name="date" type="date" required min={today} value={b.date} onChange={upd} className={inputCls} data-testid="booking-date"/>
+        <select name="time" value={b.time} onChange={upd} className={inputCls} data-testid="booking-time">
+          {times.map(t => <option key={t} value={t} className="bg-black">{t}</option>)}
+        </select>
+        <input name="notes" placeholder="Notes (optional)" value={b.notes} onChange={upd} className={`${inputCls} md:col-span-2`} data-testid="booking-notes"/>
+        <div className="md:col-span-3 flex flex-wrap items-center justify-between gap-5 mt-4">
+          <p className="text-xs text-white/45">All times Dubai (GST). We confirm within 2 working hours.</p>
+          <button type="submit" disabled={st === "sending"} data-magnetic data-testid="booking-submit" className="magnetic-btn primary"><span className="btn-fill"/>{st === "sending" ? "Booking…" : st === "success" ? "Requested ✓" : "Request Slot"}</button>
+        </div>
+        {st === "success" && <div className="md:col-span-3 glass rounded-2xl p-4 text-sm text-white/80" data-testid="booking-success">Slot requested. We've sent confirmation to {b.email}. Prefer WhatsApp? Use the button above for instant booking.</div>}
+        {st === "error" && <div className="md:col-span-3 glass rounded-2xl p-4 text-sm text-red-300" data-testid="booking-error">{er}</div>}
+      </form>
+    </div>
   );
 }

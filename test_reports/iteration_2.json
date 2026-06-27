@@ -1,0 +1,39 @@
+{
+  "summary": "Backend endpoints (admin auth, leads, analytics, CSV, bookings, PATCH validation) and SEO (robots.txt, sitemap.xml, JSON-LD, canonical, og/twitter, title) all pass. Frontend is fully broken due to a ReferenceError: AdminLeads is not defined in App.js — React renders the runtime error overlay on every route, blocking Hero/Booking/Admin UI tests.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "GET /api/ -> 200 {message:'Apex Media API', status:'live'}",
+    "POST /api/admin/login wrong token -> 401; correct token -> 200 {ok:true}",
+    "GET /api/admin/leads without header -> 401; with header -> 200 list",
+    "GET /api/admin/leads?status=contacted -> filtered list after PATCH",
+    "PATCH /api/admin/leads/{id} status=contacted -> 200; invalid status -> 400 with allowed values; unknown id -> 404",
+    "GET /api/admin/analytics -> 200 with total_leads, by_status, last_7_days, bookings, ai_messages, top_services, daily (14 entries)",
+    "GET /api/admin/leads.csv?token=apex-admin-2026 -> 200 text/csv with Content-Disposition attachment; wrong token -> 401",
+    "POST /api/bookings -> 200 with id; GET /api/admin/bookings includes new booking",
+    "robots.txt 200 with 'Sitemap:' line and Disallow: /admin",
+    "sitemap.xml 200 valid XML with site URLs",
+    "Index HTML contains <title>Apex Media...</title>, canonical, og:title, twitter:card, JSON-LD with Organization and LocalBusiness"
+  ],
+  "failed": [
+    {
+      "area": "frontend/App.js",
+      "issue": "ReferenceError: AdminLeads is not defined. App.js uses <AdminLeads /> in <Route path='/admin'> and '/admin/leads' but never imports the component (no import line for AdminLeads). React renders runtime error overlay on every route, so home, #contact (booking), and /admin pages are all unusable for end users.",
+      "evidence": "Browser screenshot shows 'Uncaught runtime errors: AdminLeads is not defined' overlay. grep of /app/frontend/src/App.js shows AdminLeads used at lines 45-46 but no matching import among lines 1-16 imports.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "backend/data-consistency",
+      "issue": "Existing legacy leads in DB do not actually have status field persisted; GET /api/admin/leads returns status:'new' as default in JSON but filter status=new returns []. Note in request said leads were backfilled — that backfill appears incomplete. By_status counts in analytics are all 0 despite returning leads.",
+      "evidence": "GET /api/admin/leads?status=new&q=smoke -> []; analytics by_status shows all zeros; CSV row shows empty status column for legacy leads; after PATCH to 'contacted', filter status=contacted correctly returns the lead.",
+      "priority": "MEDIUM"
+    }
+  ],
+  "action_items": [
+    "Add `import AdminLeads from '@/pages/AdminLeads';` (or correct path) at top of /app/frontend/src/App.js to fix the runtime error blocking the entire UI.",
+    "Re-run the backfill migration so legacy leads have status='new' stored in DB (not just defaulted in API serialization), so filter and analytics by_status are accurate.",
+    "After fix, re-run full frontend testing: Hero scroll pin, booking form (booking-name/email/date/time/submit -> booking-success, whatsapp deeplink), admin login wrong/right token, dashboard cards, status PATCH from select, CSV export link, logout."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "0% (app crashes at mount)"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

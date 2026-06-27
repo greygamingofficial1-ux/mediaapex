@@ -42,6 +42,8 @@ function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/admin" element={<AdminLeads />} />
+              <Route path="/admin/leads" element={<AdminLeads />} />
             </Routes>
             <ApexChat />
           </BrowserRouter>
