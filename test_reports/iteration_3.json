@@ -1,0 +1,18 @@
+{
+  "summary": "Verified the 'AdminLeads is not defined' runtime error is fully resolved. Home page, /admin, /admin/leads all render without console/page errors, and admin login with token 'apex-admin-2026' successfully renders the admin dashboard with stat cards and the leads table.",
+  "tested_scope": ["frontend", "integration"],
+  "passed": [
+    "Home page loads after cinematic loader; title 'Apex Media — AI Powered Digital Growth Partner in Dubai, UAE'; hero/services/etc content present",
+    "Zero AdminLeads-related console or page errors across all routes",
+    "/admin renders the admin-login form (data-testid='admin-login') without runtime errors",
+    "/admin/leads renders the same admin-login form without runtime errors",
+    "Submitting token 'apex-admin-2026' renders [data-testid='admin-dashboard'] with 7 stat-card elements and a leads table",
+    "Apex AI chat launcher visible on both home and dashboard (no regressions observed)"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "skipped", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Cinematic loader takes ~6-7s on every route (including /admin and /admin/leads). Initial 3s waits returned no form; extended to 8s and form was found. No code changes made; only test waits were adjusted."
+}

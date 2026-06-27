@@ -14,6 +14,7 @@ import Clients from "@/sections/Clients";
 import Contact from "@/sections/Contact";
 import Footer from "@/sections/Footer";
 import ApexChat from "@/components/ApexChat";
+import AdminLeads from "@/pages/AdminLeads";
 
 function HomePage() {
   return (
