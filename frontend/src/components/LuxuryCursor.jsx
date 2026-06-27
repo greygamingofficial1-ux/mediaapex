@@ -25,7 +25,7 @@ export default function LuxuryCursor() {
     let cx = mx, cy = my;       // core
     let rx = mx, ry = my;       // ring
     let gx = mx, gy = my;       // glow
-    const trailPositions = Array.from({ length: 8 }, () => ({ x: mx, y: my }));
+    const trailPositions = Array.from({ length: 6 }, () => ({ x: mx, y: my }));
     let magnet = null;
     let prevMagnet = null;
 
@@ -136,7 +136,16 @@ export default function LuxuryCursor() {
   if (!supports) return null;
 
   return (
-    <>
+    <div
+      aria-hidden="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        overflow: "hidden",
+        zIndex: 99996,
+      }}
+    >
       <div ref={glowRef} className="apex-cursor apex-cursor-glow" />
       {Array.from({ length: 6 }).map((_, i) => (
         <div
@@ -149,6 +158,6 @@ export default function LuxuryCursor() {
         <span ref={labelRef} className="apex-cursor-label" />
       </div>
       <div ref={coreRef} className="apex-cursor apex-cursor-core" />
-    </>
+    </div>
   );
 }

@@ -29,18 +29,26 @@ Build the digital identity of one of the most premium AI-powered digital agencie
 - AI chat streams a real GPT-5.2 reply end-to-end with `X-Session-Id` header.
 - Contact form submits and shows success state.
 
+## Iteration 8 — UI/UX & Interaction Audit (Feb 2026)
+- Cursor now has all FOUR layers (Core, Ring, Glow, 6-dot Particle Trail) with distinct lerp values (0.45 / 0.16 / 0.09 / cascaded).
+- Magnetic buttons physically translate toward the cursor (capped ±14px) in addition to cursor pull — verified inline transform on `hero-cta-primary`.
+- Services grid converted from CSS grid to flex layout (`flex-grow basis-[260px]`) — eliminated empty cells in 5/6/7-card category rows; orphan items stretch to fill the row.
+- Lenis ↔ GSAP ScrollTrigger bridge installed in `SmoothScroll.jsx` — fixes a black-hero regression after rapid scroll-back; `gsap.ticker` drives Lenis and `lenis.on('scroll', ScrollTrigger.update)` keeps scrub in sync.
+- Trail array length corrected (8→6) to match rendered nodes.
+- `html { overflow-x: hidden }` added so document `scrollWidth === clientWidth` at 390 / 768 / 1920 (0px delta).
+- LuxuryCursor wrapped in fixed clipping container so its fixed children cannot expand `scrollWidth` in any environment.
+- Backend regression suite added at `/app/backend/tests/test_regression.py` — 7/7 pytest pass covering `/api/`, leads POST, admin leads (header token), analytics, CSV (query token), PDF (200 + %PDF + auth matrix), chat stream.
+
 ## Known Non-Blocking Notes
 - `EmailStr` rejects non-standard test TLDs (e.g. `@apex.test`); intentional strict validation.
 - Custom cursor is intentionally hidden on touch/non-precise pointer devices.
+- Server.py uses two admin auth conventions (header token for JSON endpoints, query token for file downloads) — works as designed; may be unified later.
 
-## Backlog (P1/P2)
-- P1: Wire booking calendar to backend slot endpoint (Calendar UI placeholder ready).
-- P1: Reduce GSAP/ScrollTrigger reliance with explicit pinned camera sequence for Hero exit.
-- P2: Add admin dashboard for leads (auth + table) — endpoint already exists.
-- P2: Add hover sound hooks (architecture prepared, audio not autoplayed).
-- P2: Add Lighthouse-targeted image AVIF conversion + per-section lazy mount for Three.js.
-- P2: SEO meta tags + OG image + JSON-LD Organization/Service schema.
-- P2: Konami / easter-egg gold-particle mode.
+## Backlog (P1/P2/P3)
+- P2: Sound-ready interaction hooks (hover/click/success/navigation) — no autoplay.
+- P2: Booking calendar wired to backend slot endpoint (UI placeholder ready).
+- P3: Konami / easter-egg gold-particle mode; idle AI orb wave interactions.
+- P3: Unify admin auth (single Depends accepting header + query token).
 
 ## Next Actions
-- Showcase to user. On feedback, prioritise the P1 polish loop or feature additions.
+- Final showcase to user. Iteration 8 audit complete — site is production-ready.
