@@ -101,7 +101,28 @@ const projects = [
   },
 ];
 
+function buildImageSet(url) {
+  // Returns optimized URLs for AVIF/WebP/JPEG + srcset across breakpoints.
+  // Works for Unsplash (?auto=format) and Pexels (?auto=compress) — others fall back to original.
+  const isUnsplash = url.includes("images.unsplash.com");
+  const isPexels = url.includes("images.pexels.com");
+  const widths = [480, 768, 1024, 1400];
+  const fmt = (w, format) => {
+    if (isUnsplash) return url.replace(/([?&])w=\d+/, "").replace("auto=format", `fm=${format}&w=${w}&q=70&auto=format`);
+    if (isPexels) return url.replace(/w=\d+/, `w=${w}`) + `&fm=${format}`;
+    return url;
+  };
+  const srcsetFor = (format) => widths.map(w => `${fmt(w, format)} ${w}w`).join(", ");
+  return {
+    avif: srcsetFor("avif"),
+    webp: srcsetFor("webp"),
+    fallback: isUnsplash || isPexels ? fmt(1024, "jpg") : url,
+    sizes: "(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 700px",
+  };
+}
+
 function ProjectCard({ p, idx, onOpen, span }) {
+  const img = React.useMemo(() => buildImageSet(p.img), [p.img]);
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
@@ -115,7 +136,19 @@ function ProjectCard({ p, idx, onOpen, span }) {
       onClick={() => onOpen(p)}
     >
       <div className="absolute inset-0">
-        <img src={p.img} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-[1.4s] ease-out group-hover:scale-110" />
+        <picture>
+          <source type="image/avif" srcSet={img.avif} sizes={img.sizes} />
+          <source type="image/webp" srcSet={img.webp} sizes={img.sizes} />
+          <img
+            src={img.fallback}
+            alt={`${p.name} — ${p.industry} case study by Apex Media`}
+            loading={idx < 2 ? "eager" : "lazy"}
+            decoding="async"
+            fetchpriority={idx === 0 ? "high" : "low"}
+            width="1400" height="900"
+            className="w-full h-full object-cover transition-transform duration-[1.4s] ease-out group-hover:scale-110"
+          />
+        </picture>
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(3,3,3,0.1) 0%, rgba(3,3,3,0.85) 100%)" }} />
       </div>
       <div className="relative h-full min-h-[320px] md:min-h-[420px] p-7 md:p-9 flex flex-col justify-between">
@@ -157,7 +190,11 @@ function CaseStudyModal({ p, onClose }) {
         className="glass-strong rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="relative h-72 md:h-96 overflow-hidden rounded-t-3xl">
-          <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
+          <picture>
+            <source type="image/avif" srcSet={p.img.replace("auto=format", "fm=avif&q=72&auto=format")} />
+            <source type="image/webp" srcSet={p.img.replace("auto=format", "fm=webp&q=72&auto=format")} />
+            <img src={p.img} alt={`${p.name} hero — ${p.industry} case study`} width="1400" height="900" decoding="async" loading="lazy" className="w-full h-full object-cover" />
+          </picture>
           <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 30%, rgba(3,3,3,0.95) 100%)" }} />
           <button onClick={onClose} data-magnetic data-testid="modal-close" className="absolute top-5 right-5 w-10 h-10 rounded-full glass flex items-center justify-center text-white">×</button>
           <div className="absolute bottom-6 left-6 right-6">

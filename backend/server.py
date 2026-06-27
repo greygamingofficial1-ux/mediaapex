@@ -147,26 +147,31 @@ async def upsert_chat_lead(session_id: str, content: str):
     """Best-effort: build/update a lead record from chat content for this session."""
     if not session_id or not content: return
     found = extract_contacts(content)
-    if not found:
-        return
     existing = await db.leads.find_one({"chat_session_id": session_id}, {"_id": 0})
     if existing:
         update = {k: v for k, v in found.items() if v and not existing.get(k)}
         if update:
             await db.leads.update_one({"id": existing["id"]}, {"$set": update})
-    else:
-        if "email" not in found:
-            return  # need at least an email to qualify as lead
-        lead = Lead(
-            name=found.get("name", "Apex AI Lead"),
-            email=found["email"],
-            phone=found.get("phone", ""),
-            message=content[:500],
-            source="apex_ai_chat",
-        )
-        doc = lead.model_dump()
-        doc["chat_session_id"] = session_id
-        await db.leads.insert_one(doc)
+        return
+    if "email" not in found:
+        return
+    # Merge any previously captured draft fields (service, budget, etc.)
+    draft = await db.chat_drafts.find_one({"session_id": session_id}, {"_id": 0}) or {}
+    lead = Lead(
+        name=draft.get("name") or "Apex AI Lead",
+        email=found["email"],
+        phone=found.get("phone") or draft.get("phone") or "",
+        business=draft.get("business") or "",
+        service=draft.get("service") or "",
+        budget=draft.get("budget") or "",
+        country=draft.get("country") or "",
+        message=content[:500],
+        source="apex_ai_chat",
+    )
+    doc = lead.model_dump()
+    doc["chat_session_id"] = session_id
+    await db.leads.insert_one(doc)
+    await db.chat_drafts.delete_one({"session_id": session_id})
 
 
 # ===== Public Routes =====
@@ -415,6 +420,24 @@ async def admin_analytics(_: bool = Depends(require_admin)):
 async def admin_list_bookings(_: bool = Depends(require_admin)):
     docs = await db.bookings.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
     return docs
+
+
+@api_router.get("/admin/leads/{lead_id}/chat")
+async def admin_lead_chat(lead_id: str, _: bool = Depends(require_admin)):
+    """Return the lead record + full Apex AI chat transcript tied to its session."""
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    transcript = []
+    sid = lead.get("chat_session_id")
+    if sid:
+        transcript = await db.chat_messages.find(
+            {"session_id": sid}, {"_id": 0}
+        ).sort("created_at", 1).to_list(500)
+    draft = None
+    if sid:
+        draft = await db.chat_drafts.find_one({"session_id": sid}, {"_id": 0})
+    return {"lead": lead, "transcript": transcript, "draft": draft}
 
 
 app.include_router(api_router)

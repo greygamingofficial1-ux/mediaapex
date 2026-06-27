@@ -62,6 +62,21 @@ export default function AdminLeads() {
     } catch {}
   };
 
+  const [expanded, setExpanded] = useState(null);
+  const [transcript, setTranscript] = useState({ loading: false, data: null });
+  const toggleExpand = async (id) => {
+    if (expanded === id) { setExpanded(null); return; }
+    setExpanded(id);
+    setTranscript({ loading: true, data: null });
+    try {
+      const r = await axios.get(`${API}/admin/leads/${id}/chat`, { headers });
+      setTranscript({ loading: false, data: r.data });
+    } catch {
+      setTranscript({ loading: false, data: { lead: null, transcript: [], draft: null } });
+    }
+  };
+  const fmtTime = (iso) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } };
+
   if (!auth) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--apex-black)" }}>
@@ -170,7 +185,8 @@ export default function AdminLeads() {
               {loading && <tr><td colSpan={8} className="px-4 py-10 text-center text-white/40">Loading…</td></tr>}
               {!loading && leads.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-white/40">No leads yet.</td></tr>}
               {leads.map(l => (
-                <tr key={l.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                <React.Fragment key={l.id}>
+                <tr className="border-b border-white/5 hover:bg-white/[0.02]">
                   <td className="px-4 py-3 font-mono text-[11px] text-white/55">{(l.created_at || "").slice(0, 10)}</td>
                   <td className="px-4 py-3 text-[var(--apex-warm)]">{l.name}<div className="text-white/40 text-xs">{l.business}</div></td>
                   <td className="px-4 py-3"><a href={`mailto:${l.email}`} className="text-white/80 hover:text-[var(--apex-gold)]">{l.email}</a><div className="text-white/40 text-xs">{l.phone}</div></td>
@@ -186,11 +202,27 @@ export default function AdminLeads() {
                       {STATUSES.slice(1).map(s => <option key={s.v} value={s.v} className="bg-black">{s.l}</option>)}
                     </select>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[10px] text-white/45 uppercase">{l.source}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 font-mono text-[10px] text-white/45 uppercase">
+                    {l.source}
+                    {l.source === "apex_ai_chat" && <span className="ml-2 inline-block px-2 py-0.5 rounded-full border border-[var(--apex-gold)]/40 text-[9px] text-[var(--apex-gold)]">AI</span>}
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => toggleExpand(l.id)}
+                      data-testid={`expand-${l.id}`}
+                      className="text-[var(--apex-gold)] text-xs hover:underline mr-3"
+                    >{expanded === l.id ? "Hide" : "Transcript"}</button>
                     <a href={`https://wa.me/${(l.phone || "971586169311").replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="text-[var(--apex-gold)] text-xs hover:underline">WhatsApp</a>
                   </td>
                 </tr>
+                {expanded === l.id && (
+                  <tr className="bg-black/40">
+                    <td colSpan={8} className="px-4 py-5" data-testid={`transcript-${l.id}`}>
+                      <LeadTranscript loading={transcript.loading} data={transcript.data} fmtTime={fmtTime} />
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -217,6 +249,59 @@ export default function AdminLeads() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function LeadTranscript({ loading, data, fmtTime }) {
+  if (loading) return <div className="text-white/40 text-sm">Loading transcript…</div>;
+  if (!data || !data.lead) return <div className="text-white/40 text-sm">Unavailable.</div>;
+  const l = data.lead;
+  const t = data.transcript || [];
+  const captured = [
+    ["Name", l.name], ["Business", l.business], ["Email", l.email], ["Phone", l.phone],
+    ["Service interest", l.service], ["Budget", l.budget], ["Country", l.country],
+  ].filter(([, v]) => v);
+  return (
+    <div className="grid md:grid-cols-3 gap-6">
+      <div className="md:col-span-1">
+        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-[var(--apex-gold)] mb-3">Captured details</div>
+        <dl className="space-y-2 text-sm">
+          {captured.map(([k, v]) => (
+            <div key={k} className="flex gap-3">
+              <dt className="w-28 text-white/40 text-xs font-mono uppercase tracking-wider">{k}</dt>
+              <dd className="flex-1 text-white/90 break-words">{v}</dd>
+            </div>
+          ))}
+          {l.message && (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <div className="text-white/40 text-xs font-mono uppercase tracking-wider mb-1">Note</div>
+              <div className="text-white/80 text-sm whitespace-pre-wrap">{l.message}</div>
+            </div>
+          )}
+        </dl>
+      </div>
+      <div className="md:col-span-2">
+        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-[var(--apex-gold)] mb-3">
+          Apex AI Transcript {t.length > 0 && <span className="text-white/40">· {t.length} messages</span>}
+        </div>
+        {t.length === 0 ? (
+          <div className="text-white/40 text-sm italic">No chat transcript for this lead.</div>
+        ) : (
+          <div className="space-y-2 max-h-[420px] overflow-y-auto pr-2">
+            {t.map((m, i) => (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-[var(--apex-gold)] text-[#0a0a0a]" : "glass text-white/90"}`}>
+                  <div className="text-[9px] font-mono tracking-widest uppercase opacity-60 mb-1">
+                    {m.role === "user" ? "Visitor" : "Apex AI"} · {fmtTime(m.created_at)}
+                  </div>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
