@@ -1,54 +1,52 @@
-import { useEffect } from "react";
-import "@/App.css";
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import "@/App.css";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import LuxuryCursor from "@/components/LuxuryCursor";
+import CinematicLoader from "@/components/CinematicLoader";
+import SmoothScroll from "@/components/SmoothScroll";
+import Navbar from "@/components/Navbar";
+import Hero from "@/sections/Hero";
+import Services from "@/sections/Services";
+import Portfolio from "@/sections/Portfolio";
+import Process from "@/sections/Process";
+import Clients from "@/sections/Clients";
+import Contact from "@/sections/Contact";
+import Footer from "@/sections/Footer";
+import ApexChat from "@/components/ApexChat";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+function HomePage() {
   return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    <main className="relative">
+      <Navbar />
+      <Hero />
+      <Services />
+      <Portfolio />
+      <Process />
+      <Clients />
+      <Contact />
+      <Footer />
+    </main>
   );
-};
+}
 
 function App() {
+  const [loaded, setLoaded] = React.useState(false);
+
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="App grain">
+      <LuxuryCursor />
+      <CinematicLoader onComplete={() => setLoaded(true)} />
+      {loaded && (
+        <SmoothScroll>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+            </Routes>
+            <ApexChat />
+          </BrowserRouter>
+        </SmoothScroll>
+      )}
     </div>
   );
 }
