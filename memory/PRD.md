@@ -39,16 +39,22 @@ Build the digital identity of one of the most premium AI-powered digital agencie
 - LuxuryCursor wrapped in fixed clipping container so its fixed children cannot expand `scrollWidth` in any environment.
 - Backend regression suite added at `/app/backend/tests/test_regression.py` — 7/7 pytest pass covering `/api/`, leads POST, admin leads (header token), analytics, CSV (query token), PDF (200 + %PDF + auth matrix), chat stream.
 
+## Iteration 9 — Sound Hooks + Booking Availability + Unified Admin Auth (Feb 2026)
+- **Sound-ready hooks**: `/app/frontend/src/lib/sound.js` — `window.ApexSound` singleton (enable / disable / toggle / isEnabled / play / types). Web Audio synth for 4 cues: hover, click, success, navigate. NO autoplay — disabled by default, persisted in `localStorage.apex_sound`. `/app/frontend/src/components/SoundController.jsx` — invisible component wires global `pointerover` / `click` on `[data-magnetic]`, `apex:success`, `hashchange`, `popstate`. AudioContext unlocks on first user gesture.
+- **Booking availability**: new `GET /api/bookings/availability?date=YYYY-MM-DD` returns `{date, taken:[…]}`; `POST /api/bookings` now rejects double-bookings with 409. `Contact.jsx` BookingBlock fetches availability on date change and disables taken slots in the dropdown (rendered as `HH:MM — Booked`).
+- **Unified admin auth**: `require_admin` now accepts EITHER `X-Admin-Token` header OR `?token=` query — applied uniformly to `/admin/leads`, `/admin/leads.csv`, `/admin/leads/{id}/quote.pdf`, `/admin/analytics`, etc. Removes the previous split convention without breaking the existing frontend.
+- Regression: backend 18/18 pytest pass (`/app/backend/tests/test_iter9.py` + `test_regression.py`); frontend 100% (no UI changes).
+
 ## Known Non-Blocking Notes
 - `EmailStr` rejects non-standard test TLDs (e.g. `@apex.test`); intentional strict validation.
 - Custom cursor is intentionally hidden on touch/non-precise pointer devices.
 - Server.py uses two admin auth conventions (header token for JSON endpoints, query token for file downloads) — works as designed; may be unified later.
 
-## Backlog (P1/P2/P3)
-- P2: Sound-ready interaction hooks (hover/click/success/navigation) — no autoplay.
-- P2: Booking calendar wired to backend slot endpoint (UI placeholder ready).
+## Backlog (P2/P3)
+- P2: Wire booking calendar to a real availability range / business hours UI (current implementation surfaces taken slots inside the existing dropdown).
+- P2: Optional small UI toggle for the sound layer (currently opt-in via `window.ApexSound.enable()` / `localStorage.apex_sound = "on"`).
 - P3: Konami / easter-egg gold-particle mode; idle AI orb wave interactions.
-- P3: Unify admin auth (single Depends accepting header + query token).
+- P3: Clear `b.time` when ALL slots for a date are taken (currently auto-falls back to the first free slot).
 
 ## Next Actions
 - Final showcase to user. Iteration 8 audit complete — site is production-ready.
