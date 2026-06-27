@@ -142,9 +142,9 @@ function ProjectCard({ p, idx, onOpen, span }) {
           <img
             src={img.fallback}
             alt={`${p.name} — ${p.industry} case study by Apex Media`}
-            loading={idx < 2 ? "eager" : "lazy"}
+            loading={idx === 0 ? "eager" : "lazy"}
             decoding="async"
-            fetchpriority={idx === 0 ? "high" : "low"}
+            fetchPriority={idx === 0 ? "high" : "auto"}
             width="1400" height="900"
             className="w-full h-full object-cover transition-transform duration-[1.4s] ease-out group-hover:scale-110"
           />
