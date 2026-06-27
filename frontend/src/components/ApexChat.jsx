@@ -27,6 +27,7 @@ export default function ApexChat() {
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState(null);
   const [streaming, setStreaming] = useState(false);
+  const pendingServiceRef = useRef(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -63,12 +64,13 @@ export default function ApexChat() {
       const sid = newSession || sessionId;
       if (newSession && !sessionId) setSessionId(newSession);
 
-      // Map quick-reply chip to a service intent for admin lead record
+      // Capture / merge service intent — survive the missing-session-id race
       if (QUICK_TO_SERVICE[msg]) {
-        pushQualification(sid, { service: QUICK_TO_SERVICE[msg], message: msg });
-      } else {
-        pushQualification(sid, { message: msg });
+        pendingServiceRef.current = QUICK_TO_SERVICE[msg];
       }
+      const qualPayload = { message: msg };
+      if (pendingServiceRef.current) qualPayload.service = pendingServiceRef.current;
+      pushQualification(sid, qualPayload);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";

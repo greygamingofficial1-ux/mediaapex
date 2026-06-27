@@ -1,0 +1,24 @@
+{
+  "summary": "Re-verified the medium-priority fix for chip-service merging in Apex AI chat. SEO chip + qualification message now produces an admin lead with service='SEO'. Negative regression (no chip) yields service=''. /api/leads POST, /api/bookings POST, and /admin login dashboard all working.",
+  "tested_scope": ["frontend", "backend", "integration"],
+  "passed": [
+    "Apex AI chat flow: SEO chip click + qualification message -> admin lead saved with service='SEO', email='qa2@apex.media', phone='+971501118888', source='apex_ai_chat' (FIX CONFIRMED)",
+    "Negative regression: fresh chat with no chip + 'Hi I'm qa3@apex.media' -> lead saved with service='' (no false intent leak), source='apex_ai_chat'",
+    "POST /api/leads -> 200 with id, source defaults to contact_form",
+    "POST /api/bookings -> 200 (with required date/time fields)",
+    "GET /api/admin/leads?q=... with X-Admin-Token=apex-admin-2026 -> 200",
+    "/admin UI: token login -> Leads Dashboard renders with stats and lead rows"
+  ],
+  "failed": [],
+  "action_items": [],
+  "evidence": {
+    "qa2_lead": "service='SEO', email='qa2@apex.media', phone='+971501118888', source='apex_ai_chat', id=9a9ca2e6-f4d9-4551-8952-f61d9a69c1a9",
+    "qa3_lead": "service='', email='qa3@apex.media', source='apex_ai_chat', id=6887db8c-6cec-4ec8-943f-85bef9e21469",
+    "leads_post_status": 200,
+    "bookings_post_status": 200,
+    "admin_dashboard": "Leads Dashboard visible after token login (TOTAL LEADS=28, BOOKINGS=8, AI CHATS=8)"
+  },
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
