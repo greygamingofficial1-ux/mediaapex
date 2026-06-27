@@ -1,0 +1,35 @@
+{
+  "summary": "First-finish testing of 3 new enhancements: backend rate-limiting (leads + bookings), POST /api/chat/lead draft/upsert flow, chat/stream contact extraction, lazy-mount Three.js hero, and full integration of Apex AI chat -> admin lead. Backend rate limiting + isolation, draft->created->updated chat/lead, contact extraction from chat/stream, regression endpoints, hero canvas lazy-mount, and admin login + CSV all PASS. One functional issue: SEO quick-reply chip click does NOT merge service='SEO' into the lead created from the subsequent contact message (lead saved with empty service).",
+  "tested_scope": ["backend", "frontend", "integration"],
+  "passed": [
+    "POST /api/leads rate limit: first 5 -> 200, 6th -> 429 with Retry-After header (~59s)",
+    "POST /api/bookings rate limit: 5x 200 then 429 with Retry-After",
+    "Rate-limit bucket isolation: /api/leads being throttled did NOT affect /api/bookings (separate buckets per route+IP)",
+    "POST /api/chat/lead session=tA, {service:'SEO'} -> {ok:true, draft:true}",
+    "POST /api/chat/lead session=tA, {email,name,phone,budget} -> {ok:true, created:true}; admin GET shows service='SEO' merged from earlier draft, source='apex_ai_chat', name='A User', phone='+971500000001', budget='AED 5000'",
+    "POST /api/chat/lead session=tA with {country:'UAE', business:'Acme'} -> {ok:true, updated:true} same id; admin GET reflects merged country='UAE' and business='Acme' (no duplicate)",
+    "POST /api/chat/stream with 'Email me at bob@apex.media call +971501234567' -> admin lead created with source='apex_ai_chat', email='bob@apex.media', phone='+971501234567'",
+    "Regression POST /api/leads single call returns 200 with id and source='contact_form'",
+    "Regression POST /api/bookings creates booking + paired lead with source='booking'",
+    "GET /api/admin/analytics returns keys: ai_messages, bookings, by_status, daily, last_7_days, top_services, total_leads",
+    "GET /api/admin/leads.csv?token=apex-admin-2026 returns 200, content-type text/csv, ~2.9KB",
+    "Frontend home loads after ~7s loader, Three.js canvas mounts (1 canvas in DOM), no console errors during scroll up/down",
+    "Chat-launcher opens, 'Improve SEO' quick-reply clickable, AI stream responds, chat-input accepts text, chat-send dispatches and creates admin lead",
+    "qa@apex.media lead created via chat UI with email + phone +971501119999 + source='apex_ai_chat'",
+    "/admin login with token apex-admin-2026 loads Leads Dashboard with totals, status buckets, and table"
+  ],
+  "failed": [
+    {
+      "area": "Frontend ApexChat -> /api/chat/lead service intent",
+      "issue": "Clicking quick-reply chip 'Improve SEO' (chat-quick-improve-seo) before sending the contact message does NOT result in service='SEO' on the merged admin lead. The qa@apex.media row in admin shows service empty ('—') and the JSON response confirms service:''. The backend /api/chat/lead endpoint itself works correctly when called directly with session_id+service (validated with session 'tA'), so the issue is in the frontend: either pushQualification is not called on the chip click, or it is sent with a different/null session_id than the subsequent user-message lead push, so they do not merge.",
+      "evidence": "GET /api/admin/leads?q=qa%40apex.media -> [{...,\"service\":\"\",\"source\":\"apex_ai_chat\",\"email\":\"qa@apex.media\",\"phone\":\"+971501119999\"...}]; admin UI screenshot also shows SERVICE column = — for qa@apex.media row.",
+      "priority": "MEDIUM"
+    }
+  ],
+  "action_items": [
+    "In /app/frontend/src/components/ApexChat.jsx verify pushQualification() is invoked when a QUICK_TO_SERVICE chip is clicked, and that it reuses the same session_id later used by the user contact-message push. Likely cause: chip handler fires before X-Session-Id header is captured from a prior request, so SEO draft is keyed by null/'' session while the contact-message lead gets a new session id from the stream response, preventing merge. Suggested fix: ensure pushQualification awaits/uses the current session_id (or queue the qualification until session id is available), or include service in the chat/lead body of the next user message when an active intent exists."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "90%"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

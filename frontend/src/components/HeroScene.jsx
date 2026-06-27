@@ -114,25 +114,49 @@ function CameraDrift({ mouse, progressRef }) {
   return null;
 }
 
-export default function HeroScene({ progressRef }) {
+export default function HeroScene({ progressRef, visible = true }) {
   const mouse = useRef([0, 0]);
+  // Detect low-end / mobile / reduced motion / data-saver — render lighter scene
+  const [tier, setTier] = React.useState("high");
+  React.useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isCoarse = window.matchMedia("(pointer: coarse)").matches;
+    const cores = navigator.hardwareConcurrency || 4;
+    const memory = navigator.deviceMemory || 4;
+    const saveData = navigator.connection && navigator.connection.saveData;
+    if (reduce || saveData) setTier("min");
+    else if (isCoarse || cores <= 4 || memory <= 4 || window.innerWidth < 768) setTier("low");
+  }, []);
 
   React.useEffect(() => {
+    if (tier === "min") return;
     const onMove = (e) => {
       mouse.current = [
         (e.clientX / window.innerWidth) * 2 - 1,
         -((e.clientY / window.innerHeight) * 2 - 1),
       ];
     };
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousemove", onMove, { passive: true });
     return () => window.removeEventListener("mousemove", onMove);
-  }, []);
+  }, [tier]);
+
+  const count = tier === "low" ? 500 : 1200;
+  const dpr = tier === "low" ? [1, 1.2] : [1, 1.5];
+
+  if (tier === "min") {
+    return (
+      <div className="absolute inset-0" style={{
+        background: "radial-gradient(circle at 50% 40%, rgba(212,175,55,0.18), transparent 55%), #030303",
+      }}/>
+    );
+  }
 
   return (
     <Canvas
       camera={{ position: [0, 0, 6], fov: 55 }}
-      dpr={[1, 1.5]}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+      dpr={dpr}
+      frameloop={visible ? "always" : "demand"}
+      gl={{ antialias: tier !== "low", alpha: true, powerPreference: "high-performance" }}
     >
       <color attach="background" args={["#030303"]} />
       <fog attach="fog" args={["#030303", 5, 14]} />
@@ -140,7 +164,7 @@ export default function HeroScene({ progressRef }) {
       <pointLight position={[3, 3, 3]} intensity={1.2} color={"#D4AF37"} />
       <pointLight position={[-3, -2, 2]} intensity={0.6} color={"#FCF6BA"} />
 
-      <Particles mouse={mouse} count={1200} />
+      <Particles mouse={mouse} count={count} />
       <Rings mouse={mouse} />
       <NeuralOrb mouse={mouse} progressRef={progressRef} />
       <CameraDrift mouse={mouse} progressRef={progressRef} />

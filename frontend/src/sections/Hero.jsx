@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -17,6 +17,22 @@ export default function Hero() {
   const statsRef = useRef(null);
   const cardsRef = useRef(null);
   const progRef = useRef({ v: 0 });
+  const [mountScene, setMountScene] = useState(false);
+  const [sceneVisible, setSceneVisible] = useState(true);
+
+  // Lazy-mount the Three.js scene only when hero is near viewport
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) setMountScene(true);
+        setSceneVisible(e.intersectionRatio > 0.05);
+      },
+      { rootMargin: "300px", threshold: [0, 0.05, 0.5, 1] }
+    );
+    io.observe(sceneRef.current);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -51,7 +67,7 @@ export default function Hero() {
   return (
     <section id="top" ref={root} className="relative min-h-[100svh] w-full overflow-hidden" data-testid="hero">
       <div ref={sceneRef} className="absolute inset-0">
-        <HeroScene progressRef={progRef} />
+        {mountScene && <HeroScene progressRef={progRef} visible={sceneVisible} />}
       </div>
 
       <div className="absolute inset-0 pointer-events-none" style={{

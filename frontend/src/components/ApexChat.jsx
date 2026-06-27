@@ -9,6 +9,16 @@ const QUICK_REPLIES = [
   "Automate My Business", "Talk to Human",
 ];
 
+const QUICK_TO_SERVICE = {
+  "Build a Website": "Website Design",
+  "Generate More Leads": "Landing Pages",
+  "Improve SEO": "SEO",
+  "Run Google Ads": "Google Ads",
+  "Run Meta Ads": "Meta Ads",
+  "Add AI Chatbot": "AI Chatbots",
+  "Automate My Business": "AI Automation",
+};
+
 const WELCOME = `Hi, welcome to Apex Media 👋\nI can help you with websites, SEO, paid ads, AI automation, branding, videos and complete digital growth.\n\nWhat are you looking to improve today?`;
 
 export default function ApexChat() {
@@ -29,6 +39,14 @@ export default function ApexChat() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, open]);
 
+  const pushQualification = async (sid, fields) => {
+    if (!sid) return;
+    try { await fetch(`${API}/chat/lead`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sid, ...fields }),
+    }); } catch {}
+  };
+
   const send = async (text) => {
     const msg = (text || input || "").trim();
     if (!msg || streaming) return;
@@ -42,7 +60,15 @@ export default function ApexChat() {
         body: JSON.stringify({ session_id: sessionId, message: msg }),
       });
       const newSession = res.headers.get("X-Session-Id");
+      const sid = newSession || sessionId;
       if (newSession && !sessionId) setSessionId(newSession);
+
+      // Map quick-reply chip to a service intent for admin lead record
+      if (QUICK_TO_SERVICE[msg]) {
+        pushQualification(sid, { service: QUICK_TO_SERVICE[msg], message: msg });
+      } else {
+        pushQualification(sid, { message: msg });
+      }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";

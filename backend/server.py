@@ -1,9 +1,9 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, PlainTextResponse
 from motor.motor_asyncio import AsyncIOMotorClient
-import os, io, csv, logging, uuid
+import os, io, csv, logging, uuid, time, re
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
@@ -112,6 +112,63 @@ def require_admin(x_admin_token: Optional[str] = Header(None)):
     return True
 
 
+# ===== Rate limiter (in-memory, per IP+route, sliding window) =====
+_rate_buckets: dict[str, list[float]] = {}
+
+def rate_limit(req: Request, route: str, max_calls: int = 5, window_sec: int = 60):
+    ip = (req.headers.get("x-forwarded-for", "").split(",")[0].strip()
+          or (req.client.host if req.client else "unknown"))
+    key = f"{ip}:{route}"
+    now = time.time()
+    bucket = [t for t in _rate_buckets.get(key, []) if now - t < window_sec]
+    if len(bucket) >= max_calls:
+        retry = int(window_sec - (now - bucket[0]))
+        raise HTTPException(status_code=429, detail=f"Too many requests. Please retry in {retry}s.",
+                            headers={"Retry-After": str(max(1, retry))})
+    bucket.append(now)
+    _rate_buckets[key] = bucket
+
+
+# ===== AI lead enrichment =====
+EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
+PHONE_RE = re.compile(r"(\+?\d[\d\s\-()]{6,}\d)")
+
+def extract_contacts(text: str) -> dict:
+    out = {}
+    if not text: return out
+    m = EMAIL_RE.search(text)
+    if m: out["email"] = m.group(0)
+    p = PHONE_RE.search(text)
+    if p: out["phone"] = re.sub(r"\s+", "", p.group(0))
+    return out
+
+
+async def upsert_chat_lead(session_id: str, content: str):
+    """Best-effort: build/update a lead record from chat content for this session."""
+    if not session_id or not content: return
+    found = extract_contacts(content)
+    if not found:
+        return
+    existing = await db.leads.find_one({"chat_session_id": session_id}, {"_id": 0})
+    if existing:
+        update = {k: v for k, v in found.items() if v and not existing.get(k)}
+        if update:
+            await db.leads.update_one({"id": existing["id"]}, {"$set": update})
+    else:
+        if "email" not in found:
+            return  # need at least an email to qualify as lead
+        lead = Lead(
+            name=found.get("name", "Apex AI Lead"),
+            email=found["email"],
+            phone=found.get("phone", ""),
+            message=content[:500],
+            source="apex_ai_chat",
+        )
+        doc = lead.model_dump()
+        doc["chat_session_id"] = session_id
+        await db.leads.insert_one(doc)
+
+
 # ===== Public Routes =====
 @api_router.get("/")
 async def root():
@@ -119,14 +176,16 @@ async def root():
 
 
 @api_router.post("/leads", response_model=Lead)
-async def create_lead(payload: LeadCreate):
+async def create_lead(payload: LeadCreate, request: Request):
+    rate_limit(request, "leads", max_calls=5, window_sec=60)
     lead = Lead(**payload.model_dump())
     await db.leads.insert_one(lead.model_dump())
     return lead
 
 
 @api_router.post("/bookings", response_model=Booking)
-async def create_booking(payload: BookingCreate):
+async def create_booking(payload: BookingCreate, request: Request):
+    rate_limit(request, "bookings", max_calls=5, window_sec=60)
     booking = Booking(**payload.model_dump())
     await db.bookings.insert_one(booking.model_dump())
     # also drop a lead record so admin sees it in one place
@@ -159,6 +218,11 @@ async def chat_stream(req: ChatRequest):
         "session_id": session_id, "role": "user", "content": req.message,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
+    # Enrich admin lead with any contact details mentioned by user
+    try:
+        await upsert_chat_lead(session_id, req.message)
+    except Exception:
+        pass
 
     parts: list[str] = []
 
@@ -187,6 +251,64 @@ async def chat_stream(req: ChatRequest):
         media_type="text/plain; charset=utf-8",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "X-Session-Id": session_id},
     )
+
+
+class ChatLeadUpdate(BaseModel):
+    session_id: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    business: Optional[str] = None
+    service: Optional[str] = None
+    budget: Optional[str] = None
+    country: Optional[str] = None
+    message: Optional[str] = None
+
+
+@api_router.post("/chat/lead")
+async def chat_lead(payload: ChatLeadUpdate, request: Request):
+    """Upsert a lead record tied to an Apex AI chat session with any qualification fields the visitor shares."""
+    rate_limit(request, "chat-lead", max_calls=30, window_sec=60)
+    if not payload.session_id:
+        raise HTTPException(status_code=400, detail="session_id required")
+    fields = {k: v for k, v in payload.model_dump().items()
+              if k != "session_id" and v not in (None, "")}
+    existing = await db.leads.find_one({"chat_session_id": payload.session_id}, {"_id": 0})
+    if existing:
+        if fields:
+            await db.leads.update_one({"id": existing["id"]}, {"$set": fields})
+        return {"ok": True, "id": existing["id"], "updated": True}
+    # New lead: require at least email or phone to create
+    if not (fields.get("email") or fields.get("phone")):
+        # Track partial profile as draft (chat_messages already saved separately)
+        await db.chat_drafts.update_one(
+            {"session_id": payload.session_id},
+            {"$set": {**fields, "session_id": payload.session_id, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+        return {"ok": True, "id": None, "draft": True}
+    lead = Lead(
+        name=fields.get("name", "Apex AI Lead"),
+        email=fields.get("email", "noemail@apex.media"),
+        phone=fields.get("phone", ""),
+        business=fields.get("business", ""),
+        service=fields.get("service", ""),
+        budget=fields.get("budget", ""),
+        country=fields.get("country", ""),
+        message=fields.get("message", ""),
+        source="apex_ai_chat",
+    )
+    doc = lead.model_dump()
+    doc["chat_session_id"] = payload.session_id
+    # Merge any prior draft data
+    draft = await db.chat_drafts.find_one({"session_id": payload.session_id}, {"_id": 0})
+    if draft:
+        for k in ("name","business","service","budget","country","phone","email"):
+            if (not doc.get(k)) and draft.get(k):
+                doc[k] = draft[k]
+        await db.chat_drafts.delete_one({"session_id": payload.session_id})
+    await db.leads.insert_one(doc)
+    return {"ok": True, "id": doc["id"], "created": True}
 
 
 # ===== Admin Routes =====
