@@ -106,17 +106,17 @@ function ServiceCard({ s, large }) {
       onMouseMove={onMove}
       onMouseLeave={onLeave}
       data-testid={`service-card-${s.id}`}
-      className={`group spotlight tilt-card glass rounded-2xl p-7 md:p-8 transition-colors duration-500 hover:border-[var(--apex-gold)]/40 ${large ? "md:col-span-2 md:row-span-2" : ""}`}
+      className={`group spotlight tilt-card glass rounded-2xl p-7 md:p-8 transition-colors duration-500 hover:border-[var(--apex-gold)]/40 flex flex-col flex-grow basis-[260px] md:basis-[280px] max-w-full ${large ? "lg:basis-[600px]" : ""}`}
     >
       <div className="flex items-start justify-between">
         <Icon name={s.icon} />
         <span className="font-mono text-[10px] tracking-[0.3em] text-white/30">/SERVICE</span>
       </div>
-      <h3 className={`mt-8 font-display text-[var(--apex-warm)] leading-tight ${large ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"}`}>
+      <h3 className={`mt-8 font-display text-[var(--apex-warm)] leading-tight ${large ? "text-2xl md:text-3xl" : "text-xl md:text-2xl"}`}>
         {s.name}
       </h3>
       <p className="mt-3 text-sm text-white/55 leading-relaxed max-w-md">{s.desc}</p>
-      <div className="mt-8 flex items-center justify-between text-[10px] font-mono tracking-[0.3em] uppercase text-[var(--apex-gold)]/70 group-hover:text-[var(--apex-gold)] transition-colors">
+      <div className="mt-auto pt-8 flex items-center justify-between text-[10px] font-mono tracking-[0.3em] uppercase text-[var(--apex-gold)]/70 group-hover:text-[var(--apex-gold)] transition-colors">
         <span>Learn more</span>
         <span className="transform transition-transform group-hover:translate-x-2">→</span>
       </div>
@@ -157,7 +157,7 @@ export default function Services() {
                 <h3 className="font-display text-2xl md:text-3xl text-[var(--apex-warm)]">{cat.title}</h3>
                 <div className="flex-1 h-px bg-gradient-to-r from-[var(--apex-gold)]/40 to-transparent" />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6 auto-rows-fr">
+              <div className="flex flex-wrap gap-5 md:gap-6 items-stretch">
                 {cat.services.map((s, si) => (
                   <ServiceCard key={s.id} s={s} large={ci === 0 && si === 0} />
                 ))}

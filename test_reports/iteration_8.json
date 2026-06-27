@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 8 full UI/UX + interaction + regression audit for Apex Media. Backend regression (7/7 pytest pass): /api/, /api/leads POST, /api/admin/leads (X-Admin-Token), /api/admin/analytics, /api/admin/leads.csv (?token=), /api/admin/leads/{id}/quote.pdf (200 + %PDF + Content-Disposition + auth matrix), /api/chat/stream reachable. Frontend audit (Playwright on production URL): hero renders with Three.js canvas, both CTAs visible; LuxuryCursor renders all 4 layers (core+ring+glow) plus 6 cursor-trail elements; magnetic button physical translation verified (hero-cta-primary computed inline transform = 'translate(6.51px, 2.13px)' on hover); ALL 22 service-card-{id} testids present with visible titles+descriptions; service row distribution: Digital Presence 7 cards = 3+4 rows, Growth 6 = 4+2, AI 5 = 4+1, Premium 4 = single row — flex-grow basis-[260px] stretches last-row items, no empty cells; ALL 8 portfolio cards render with successfully loaded <img> (naturalWidth>0); portfolio modal opens on click and shows challenge/strategy/execution/result + has working modal-close testid; Lenis smooth scroll bottom→top fully restores hero (opacity=1, headline text 'AI Powered Digital Growth Partner.' present); ApexChat opens via 'apex:openChat' event, sending 'Hi do you offer SEO?' returned a 1105-char AI-streamed reply; contact form fills via testids contact-field-{name,email,message,...}, submit POSTs to /api/leads (200) and shows 'SENT' success state + 'thank' indicator; /admin route loads, admin-token-input + admin-login-submit work with apex-admin-2026, admin-leads-table visible; navigation Home→Admin→Home produced 0 console errors; viewports 1920x1080 and 768x1024 show scrollWidth==clientWidth (no horizontal overflow).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Mobile 390x844 (Playwright)",
+        "issues": [
+          "scrollWidth=396 vs clientWidth=390 — 6px horizontal overflow. Root cause in tests: LuxuryCursor 4 layers (apex-cursor-glow w=110 at fixed transform x=584, apex-cursor-ring, cursor-trail x6, apex-cursor-core) are rendered because Playwright headless reports `(hover: hover) and (pointer: fine)`=true. On real touch mobile devices these layers are not rendered (LuxuryCursor.jsx returns null when mq fails), so this is unlikely to affect real users. Marquee in Clients section already has overflow-hidden wrapper.",
+          "Optional hardening: add `body { overflow-x: hidden }` OR wrap LuxuryCursor portal in a fixed container with `pointer-events:none; left:0; top:0; width:100vw; height:100vh; overflow:hidden;` so any cursor layer translated past viewport edges does not expand documentElement.scrollWidth even in desktop emulation tests."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_regression.py",
+    "/app/test_reports/pytest/iter8_results.xml"
+  ],
+  "action_items": [
+    "Optional (low priority): Add `overflow-x: hidden` on body or wrap LuxuryCursor in a fixed full-viewport pointer-events:none container with overflow:hidden, to prevent the 6px horizontal scroll in mobile-emulated environments. Real touch users unaffected.",
+    "Cosmetic: services row 5 (AI & Automation) shows 4 cards in row 1 and 1 stretched card in row 2 — visually that lone bottom card spans full width via flex-grow. If a tighter ratio (e.g. 3+2 or 5-in-one-row) is preferred at 1920, consider tuning basis values."
+  ],
+  "critical_code_review_comments": [
+    "LuxuryCursor.jsx line 28: trailPositions length is 8 but only 6 .cursor-trail nodes are rendered — last 2 trail positions are never displayed. Cosmetic only; either render 8 trails or shrink trailPositions to 6 for clarity.",
+    "Magnetic translation in LuxuryCursor.jsx writes `style.transform` directly which conflicts with framer-motion/GSAP transforms on same elements. Currently OK because magnetic-btn does not use motion.transform; document this invariant.",
+    "server.py uses two different admin auth conventions: X-Admin-Token header for /api/admin/leads + /api/admin/analytics, BUT ?token= query for /api/admin/leads.csv and /api/admin/leads/{id}/quote.pdf. Consider unifying to single Depends(require_admin) accepting both header and query token for consistency."
+  ],
+  "updated_files": [
+    "/app/backend/tests/__init__.py (new)",
+    "/app/backend/tests/test_regression.py (new — 7 tests, 100% pass)"
+  ],
+  "success_rate": { "backend": "100%", "frontend": "100%" },
+  "test_credentials": "Admin token: apex-admin-2026 (X-Admin-Token header for /api/admin/leads & /api/admin/analytics; ?token= query for CSV & quote.pdf).",
+  "seed_data_creation": "Created 3 TEST_ prefixed leads in mongo via /api/leads during tests (TEST_Iter8 Lead, TEST_PDF Iter8, TEST Iter8 Final). Safe to delete via admin endpoint if cleanup is desired.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Apex Media iteration 8 confirms: 4-layer cursor + magnetic physical translation + flex-layout services + Lenis-GSAP scroll restore + portfolio bento + chat streaming + contact lead submission + admin token PDF all working. Backend regression test_regression.py is the canonical regression suite. The only minor issue is a 6px horizontal scroll at mobile 390 in Playwright emulation caused by LuxuryCursor layers — does not affect real touch devices. /admin login uses data-testid admin-token-input + admin-login-submit + admin-leads-table.",
+  "rca of the issue": "Mobile 390 horizontal overflow RCA: documentElement.scrollWidth=396 vs clientWidth=390. The offending elements identified via JS DOM walk are apex-cursor-glow (right edge 694px), apex-cursor-ring (right 653px), and cursor-trail layers. These are position:fixed with transform translate values exceeding the 390px viewport. Reproduction: Playwright set_viewport_size 390x844 → window.matchMedia('(hover:hover) and (pointer:fine)').matches returns true in headless → LuxuryCursor renders → its fixed layers contribute to scrollWidth. Mitigation: either guard with a touch-capability media query OR wrap cursor layers in a fixed full-viewport container with overflow:hidden so their translated children cannot expand the document scrollWidth. On real iOS/Android Safari/Chrome, hover:hover is false → cursor returns null → no overflow."
+}

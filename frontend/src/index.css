@@ -222,6 +222,7 @@ body {
   pointer-events: none;
   z-index: 99999;
   mix-blend-mode: normal;
+  will-change: transform, opacity;
 }
 .apex-cursor-core {
   width: 8px; height: 8px;
@@ -230,6 +231,16 @@ body {
   box-shadow: 0 0 12px rgba(212,175,55,0.9), 0 0 28px rgba(212,175,55,0.5);
   transform: translate(-50%, -50%);
 }
+.apex-cursor-glow {
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212,175,55,0.22) 0%, rgba(212,175,55,0.05) 45%, transparent 70%);
+  filter: blur(6px);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s cubic-bezier(.2,.8,.2,1), height 0.4s cubic-bezier(.2,.8,.2,1), opacity 0.35s ease;
+  z-index: 99996;
+}
+.apex-cursor-glow.hover { width: 160px; height: 160px; }
 .apex-cursor-ring {
   width: 38px; height: 38px;
   border: 1px solid rgba(212,175,55,0.55);
