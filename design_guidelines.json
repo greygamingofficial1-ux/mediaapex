@@ -1,0 +1,157 @@
+{
+  "project_name": "Apex Media",
+  "domain": "AI-Powered Digital Growth Agency",
+  "theme": "dark",
+  "archetype": "5 - Luxury (Cinematic & High-End)",
+  "design_vision": "A $20K+ cinematic luxury website competing with Awwwards SOTD winners like Cuberto, Active Theory, and Locomotive. Combines deep luxury aesthetics (black, charcoal, metallic gold) with immersive 3D WebGL experiences, smooth scrolling, and aggressive, premium typography.",
+  "colors": {
+    "background": {
+      "primary": "#030303",
+      "description_primary": "Pure Luxury Black. Grounding color for the entire site.",
+      "secondary": "#111111",
+      "description_secondary": "Dark Charcoal. Used for depth, card surfaces, and alternating sections."
+    },
+    "text": {
+      "primary": "#F8F6F0",
+      "description_primary": "Warm White. High contrast, elegant, reduces pure white eye strain.",
+      "secondary": "#A0A0A0",
+      "description_secondary": "Soft Gray. Used for body paragraphs, subtle labels, and metadata."
+    },
+    "accent": {
+      "primary": "#D4AF37",
+      "description_primary": "Metallic Gold. Primary action color, used for 3D elements, magnetic CTAs, and highlight text.",
+      "glow": "rgba(212, 175, 55, 0.15)",
+      "gradient": "linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)"
+    },
+    "surfaces": {
+      "glass": "rgba(17, 17, 17, 0.4)",
+      "glass_border": "rgba(212, 175, 55, 0.15)"
+    }
+  },
+  "typography": {
+    "headings": {
+      "font_family": "'Fraunces', 'Playfair Display', serif",
+      "weight": "300 to 400 (Variable)",
+      "usage": "Cinematic, large-scale typography. Never use generic sans for H1/H2. Use tight tracking (tracking-tighter) for massive scale.",
+      "scale": {
+        "h1": "text-5xl md:text-7xl lg:text-[7rem] leading-none tracking-tighter",
+        "h2": "text-4xl md:text-5xl lg:text-6xl leading-tight tracking-tight",
+        "h3": "text-2xl md:text-3xl lg:text-4xl leading-snug"
+      }
+    },
+    "body": {
+      "font_family": "'Manrope', 'Outfit', sans-serif",
+      "weight": "300 to 400",
+      "usage": "Clean, highly legible geometric sans to balance the expressive headings.",
+      "scale": {
+        "large": "text-lg md:text-xl leading-relaxed",
+        "default": "text-base leading-relaxed tracking-wide",
+        "small": "text-sm uppercase tracking-[0.2em]"
+      }
+    },
+    "mono": {
+      "font_family": "'JetBrains Mono', monospace",
+      "usage": "For tech/AI details, loader counters, workflow nodes, and small meta-labels."
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "px-6 md:px-12 lg:px-24",
+    "section_spacing": "py-24 md:py-32 lg:py-40",
+    "grid_system": "Asymmetric Bento Grid (Tetris Mode) for Portfolio and Services. Heavy use of negative space.",
+    "border_radius": "rounded-2xl for soft luxury, rounded-full for badges/pills."
+  },
+  "motion_and_interactions": {
+    "scroll_engine": "Lenis for smooth momentum scrolling. Mandatory for premium feel.",
+    "trigger_engine": "GSAP ScrollTrigger for section transitions, split-text reveals, and clip-path imagery.",
+    "cursor": "Custom glowing metallic gold orb (framer-motion). Incorporates inertia, particle trails, and magnetic snapping on buttons.",
+    "micro_interactions": "Cards feature spotlight hover effect (framer-motion) tracking mouse position with a subtle gold glow. Magnetic buttons.",
+    "three_js_integration": "R3F used in Hero for floating gold particles, glass rings, and AI neural orb. Mouse parallax tied to camera position."
+  },
+  "components": {
+    "glass_card": {
+      "background": "bg-[#111111]/40",
+      "backdrop_blur": "backdrop-blur-xl",
+      "border": "border border-white/5 hover:border-[#D4AF37]/30 transition-colors duration-500",
+      "shadow": "shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+    },
+    "button_primary": {
+      "style": "Magnetic button. Dark charcoal base, 1px gold border, text warm white. On hover, gold background sweeps in.",
+      "padding": "px-8 py-4",
+      "typography": "text-sm uppercase tracking-[0.1em]"
+    },
+    "ai_chat_widget": {
+      "position": "fixed bottom-8 right-8 z-50",
+      "style": "Premium dark/gold ChatGPT-like interface. Floating gold orb avatar.",
+      "function": "Conversational lead qualification, deep links to WhatsApp/Email."
+    }
+  },
+  "sections": {
+    "loader": {
+      "description": "Cinematic Loader. Particles assembling the Apex logo with a monospace percent counter. Fades into the Hero via a depth transition."
+    },
+    "hero": {
+      "description": "3D immersive WebGL scene using Three.js/R3F.",
+      "visuals": "Floating golden particles, glass rings, and a glowing neural AI orb.",
+      "interaction": "Mouse parallax shifts the entire 3D scene. Split-text reveal for the H1 'AI Powered Digital Growth Partner'. Magnetic CTAs."
+    },
+    "services": {
+      "description": "Bento grid of 4 categories (Digital Presence, Growth & Advertising, AI & Automation, Premium Add-ons) containing 19 unique cards.",
+      "visuals": "Each card has a bespoke micro-visual (e.g., rotating SEO globe, glowing workflow nodes, AI chat interface mockup). Spotlight hover effect on cards."
+    },
+    "portfolio": {
+      "description": "Asymmetric premium gallery highlighting Dubai enterprises and luxury brands.",
+      "visuals": "Uses subtle clip-path reveals on scroll. Images have a dark gradient overlay. Hovering an image scales it slightly and reveals result counters.",
+      "interaction": "Clicking opens a case study modal (Challenge, Strategy, Execution, Results) with before/after sliders."
+    },
+    "process": {
+      "description": "Vertical line timeline (Discovery → Strategy → Design → Development → Marketing → Optimization → Scale).",
+      "visuals": "Golden node lights up as the user scrolls past it (ScrollTrigger)."
+    },
+    "marquee": {
+      "description": "Slow, elegant scrolling ribbon of client logos. Low contrast (dark gray on black) to remain subtle."
+    },
+    "contact": {
+      "description": "Luxury glass info card.",
+      "visuals": "Contains +971586169311, mediaapex15@gmail.com, WhatsApp button, and a bespoke booking form with floating labels and gold underlines.",
+      "interaction": "Form inputs have a glowing gold border on focus."
+    },
+    "footer": {
+      "description": "Massive typography for 'APEX MEDIA'. Animated gold line separator. Floating gold orb 'Back to Top' button."
+    }
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero_abstract_3d",
+        "url": "https://images.pexels.com/photos/26628060/pexels-photo-26628060.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "alt": "A mesmerizing abstract design featuring smooth golden waves creating an artistic visual texture",
+        "usage": "Use as a fallback background texture for the 3D scene or for service card abstract visuals."
+      },
+      {
+        "category": "hero_abstract_3d_dark",
+        "url": "https://images.pexels.com/photos/12564248/pexels-photo-12564248.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "alt": "Conceptual abstract art with metallic textures in dark, moody tones",
+        "usage": "Use for the 'AI & Automation' service card background or AI widget header."
+      },
+      {
+        "category": "portfolio_dubai_luxury",
+        "url": "https://images.unsplash.com/photo-1723822603065-f799bbe7c3f7",
+        "alt": "Tall building lit up at night in Dubai",
+        "usage": "Placeholder for 'Luxe Hotel Dubai' or 'Luxury Business Hub' portfolio case study."
+      },
+      {
+        "category": "portfolio_dubai_night",
+        "url": "https://images.unsplash.com/photo-1603350902363-3141f62b7dba",
+        "alt": "People walking on sidewalk near body of water during night time with city lights",
+        "usage": "Placeholder for 'Prestige Restaurant' or 'Apex Real Estate' case study."
+      },
+      {
+        "category": "portfolio_luxury_statue",
+        "url": "https://images.unsplash.com/photo-1695799037547-64b0e03212bf",
+        "alt": "Statue of a woman in a park at night with modern architecture",
+        "usage": "Placeholder for 'Fashion Luxury Brand' case study."
+      }
+    ]
+  },
+  "data_testid_instructions": "All interactive and key informational elements MUST include a data-testid attribute to facilitate robust automated testing (e.g., data-testid='hero-cta-button', data-testid='service-card-seo')."
+}
