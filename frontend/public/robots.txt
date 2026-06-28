@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /admin
-
-Sitemap: https://premium-growth-hub-10.preview.emergentagent.com/sitemap.xml
