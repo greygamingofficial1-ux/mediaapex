@@ -12,6 +12,7 @@
     "Service cards visible: web-design, seo, ai-chat",
     "Chat launcher opens chat-panel; chat-send streams assistant reply rendered in panel",
     "Contact form (name/email/message) with valid email submits and contact-success renders"
+    
   ],
   "failed": [
     {
